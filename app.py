@@ -1,7 +1,9 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 import mysql.connector
 from datetime import datetime
-
+import os
+from urllib.parse import urlparse
+import mysql.connector
 
 app = Flask(__name__)
 app.secret_key = 'charliechaplin'
@@ -14,8 +16,7 @@ app.secret_key = 'charliechaplin'
 #     database="librarydb"
 # )
 
-import os
-import mysql.connector
+
 
 url = urlparse(os.environ["DATABASE_URL"])  # or os.environ["MYSQL_URI"]
 
