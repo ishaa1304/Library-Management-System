@@ -17,12 +17,14 @@ app.secret_key = 'charliechaplin'
 import os
 import mysql.connector
 
+url = urlparse(os.environ["DATABASE_URL"])  # or os.environ["MYSQL_URI"]
+
 db = mysql.connector.connect(
-    host=os.environ.get("MYSQLHOST"),
-    user=os.environ.get("MYSQLUSER"),
-    password=os.environ.get("MYSQLPASSWORD"),
-    database=os.environ.get("MYSQLDATABASE"),
-    port=int(os.environ.get("MYSQLPORT", 3306))
+    host=url.hostname,
+    port=url.port,
+    user=url.username,
+    password=url.password,
+    database=url.path[1:],  # strip leading '/'
 )
 
 
