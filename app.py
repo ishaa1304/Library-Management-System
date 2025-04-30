@@ -18,15 +18,14 @@ app.secret_key = 'charliechaplin'
 
 
 
-url = urlparse(os.environ["DATABASE_URL"])  # or os.environ["MYSQL_URI"]
-
 db = mysql.connector.connect(
-    host=url.hostname,
-    port=url.port,
-    user=url.username,
-    password=url.password,
-    database=url.path[1:],  # strip leading '/'
+    host="sql12.freesqldatabase.com",
+    user="sql12776203",
+    password="vQ4JwNe3nn",
+    database="sql12776203",
+    port=3306
 )
+
 
 
 # # Prometheus Metrics
