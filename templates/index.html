@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/static/css/index.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+</head>
+    <title>Books In The Library</title>
+</head>
+<body>
+    
+
+    <!-- Cart button at the top right -->
+    <button onclick="viewBorrowedBooks('{{ member_id }}')" class="cart">
+        <img src="/static/images/cart.png" alt="Cart" class="cart-icon">
+        <span id="borrowed-counter">{{ borrowed_count or 0 }}</span>
+    </button>
+
+    <div class="container">
+        <!-- Sidebar -->
+<aside class="sidebar">
+    <div class="menu">
+        <h1>Menu</h1>
+       
+        <button class="add-button" onclick="addNewBook()">Add a book</button>
+        <button class="add-button" onclick="returnBooks('{{ member_id }}')">Return Book</button>
+        <!-- Logout button -->
+        <form class="log" action="{{ url_for('logout') }}" method="GET">
+            <button type="submit" class="logout">Logout</button>
+        </form>
+    </div>
+</aside>
+
+        <main class="main-content">
+            <h1>Books In The Library</h1>
+            <section class="books-section">
+                
+                <div class="books">
+                    {% if books %}
+                        {% for book in books %}
+                        <div class="book {% if book.Available_Copies == 0 %}out-of-stock{% endif %}" id="book-{{ book.Book_id }}">
+                            <p>{{ book.Title }} by {{ book.Author }}</p>
+                            {% if book.Available_Copies > 0 %}
+                            <button onclick="borrowBook('{{ book.Book_id }}', '{{ member_id }}')">Borrow</button>
+                            {% else %}
+                            <p>Out of Stock</p>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="empty-library-container">
+                            <img src="/static/images/empty.png" alt="Empty Library" class="empty-library-icon">
+                            <p class="empty-library-message">The library is currently empty. Please add some books!</p>
+                        </div>
+                    {% endif %}   
+                </div>
+            </section>
+        </main>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="/static/js/index.js"></script>
+    
+</body>
+</html>

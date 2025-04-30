@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Borrowed Books</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <link rel="stylesheet" href="/static/css/borrowed_books.css">
+</head>
+<body>
+    <div class="container">
+        <h1>My Borrowed Books</h1>
+        <form action="{{ url_for('return_books') }}" method="POST" id="returnBooksForm">
+            <ul>
+                {% for book in borrowed_books %}
+                <li>
+                    <input type="checkbox" name="book_ids[]" value="{{ book.Book_Id }}">
+                    {{ book.Book_Id }}-{{ book.Title }} by {{ book.Author }} - Borrowed on {{ book.Borrowed_Date }}
+                </li>
+                {% endfor %}
+            </ul>
+            <input type="hidden" name="member_id" value="{{ member_id }}">
+            <button type="submit" class="borrow-button">Return Selected Books</button>
+        </form>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
+    <script type="text/template">
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    Swal.fire({
+                        title: 'Success!',
+                        text: '{{ message }}',
+                        icon: 'success',
+                        timer: 3000,
+                        timerProgressBar: true
+                    });
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </script>
+    
+</body>
+</html>

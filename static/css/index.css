@@ -1,0 +1,187 @@
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f9f9f9;
+    margin: 0;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.container {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+.sidebar {
+    width: 275px;
+    background-color: #ffefcb;
+    color: #fff;
+    padding: 20px;
+    height: 100vh; /* Make the sidebar cover the full vertical height */
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between; /* Add space between menu items and buttons */
+}
+
+.menu h1 {
+    font-size: 20px;
+    margin-bottom: 20px;
+    color: #000;
+}
+.logout {
+    background-color: #A52A2A;
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    cursor: pointer;
+    border-radius: 5px;
+    width: 100%; /* Make button full width */
+    text-align: center; /* Center align text */
+    margin-bottom: 10px; /* Add space below the button */
+}
+
+.logout:hover {
+    background-color: #800000; /* Darker shade for hover effect */
+}
+.empty-library-container {
+    text-align: center;
+    padding: 40px;
+    background-color: #fff8e1;
+    border: 2px dashed #a52a2a;
+    border-radius: 10px;
+    margin: 20px 0;
+}
+
+.empty-library-icon {
+    width: 80px;
+    height: 80px;
+    margin-bottom: 20px;
+}
+
+.empty-library-message {
+    font-size: 20px;
+    color: #a52a2a;
+    font-weight: bold;
+}
+
+
+
+.menu ul {
+    list-style: none;
+    padding: 0;
+}
+
+.menu ul li {
+    margin-bottom: 10px;
+}
+
+.menu ul li a {
+    color: #fff;
+    text-decoration: none;
+}
+.book.out-of-stock {
+    opacity: 0.5; /* Example: reduce opacity for out-of-stock books */
+    pointer-events: none; /* Disable click events for out-of-stock books */
+}
+
+
+.add-button {
+    display: block;
+    background-color: #9a7b4f;
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    cursor: pointer;
+    border-radius: 5px;
+    width: 100%; /* Make buttons full width */
+    text-align: center; /* Align text to the left */
+    margin-bottom: 10px; /* Add some space between buttons */
+}
+
+.add-button:hover {
+    background-color: #9a7b4f;
+}
+
+.main-content {
+    flex-grow: 1;
+    padding: 20px;
+    overflow-y: auto; /* Enable scrolling if content overflows */
+}
+
+.main-content h1 {
+    font-size: 24px;
+    margin-bottom: 20px;
+}
+
+.books-section, .users-section {
+    margin-bottom: 40px;
+}
+
+.books {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px; /* Adds space between the books */
+    justify-content: space-between; /* Evenly space books */
+}
+
+.book {
+    flex: 1 1 calc(20% - 20px); /* Flexible item width with margin space considered */
+    box-sizing: border-box;
+    margin: 10px;
+    text-align: center;
+    background: #fff;
+    padding: 10px;
+    box-shadow: 0 0 5px rgba(0,0,0,0.1);
+    border-radius: 5px;
+}
+
+.book img {
+    width: 100%;
+    height: auto;
+    border-radius: 5px;
+}
+
+.book p {
+    margin: 10px 0;
+}
+
+button {
+    background-color: #65350F;
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    cursor: pointer;
+    border-radius: 5px;
+}
+
+button:hover {
+    background-color: #0056b3;
+}
+
+/* Style for the cart */
+.cart {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    z-index: 9999;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    background: none;
+    border: none;
+}
+
+.cart-icon {
+    width: 30px;
+    height: 30px;
+    margin-right: 5px;
+}
+
+#borrowed-counter {
+    background-color: #ff5733;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 50%;
+    font-size: 12px;
+}

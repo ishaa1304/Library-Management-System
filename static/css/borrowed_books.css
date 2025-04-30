@@ -1,0 +1,70 @@
+/* Stylesheet for My Borrowed Books */
+
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f4;
+}
+
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: #fff;
+    border-radius: 5px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+h1 {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+ul {
+    list-style-type: none;
+    padding: 0;
+}
+
+li {
+    padding: 10px 0;
+    border-bottom: 1px solid #ddd;
+}
+
+li:last-child {
+    border-bottom: none;
+}
+
+.book-info {
+    display: flex;
+    justify-content: space-between;
+}
+
+.book-title {
+    font-weight: bold;
+}
+
+.book-author {
+    color: #666;
+}
+
+.borrow-button {
+    background-color: #65350F;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    cursor: pointer;
+    border-radius: 5px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    margin-top: 20px; /* Adjust as needed */
+}
+
+.borrow-button:hover {
+    background-color: #65350F;
+}
+
+.borrow-button:active {
+    background-color: #65350F;
+    transform: translateY(1px);
+}
