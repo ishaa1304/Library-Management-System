@@ -7,12 +7,24 @@ app = Flask(__name__)
 app.secret_key = 'charliechaplin'
 # metrics = PrometheusMetrics(app)
 # Connect to MySQL (local)
+# db = mysql.connector.connect(
+#     host="localhost",
+#     user="root",
+#     password="root",  # Replace with your actual password
+#     database="librarydb"
+# )
+
+import os
+import mysql.connector
+
 db = mysql.connector.connect(
-    host="localhost",
-    user="root",
-    password="root",  # Replace with your actual password
-    database="librarydb"
+    host=os.environ.get("MYSQLHOST"),
+    user=os.environ.get("MYSQLUSER"),
+    password=os.environ.get("MYSQLPASSWORD"),
+    database=os.environ.get("MYSQLDATABASE"),
+    port=int(os.environ.get("MYSQLPORT", 3306))
 )
+
 
 # # Prometheus Metrics
 # REQUEST_COUNT = Counter('http_requests_total', 'Total number of HTTP requests', ['method', 'endpoint'])
