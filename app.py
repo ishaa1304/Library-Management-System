@@ -7,24 +7,60 @@ import mysql.connector
 
 app = Flask(__name__)
 app.secret_key = 'charliechaplin'
-# metrics = PrometheusMetrics(app)
-# Connect to MySQL (local)
+
+
+import mysql.connector
+from mysql.connector import Error
+
+# Database connection details
+hostname = "gowsj.h.filess.io"
+database = "1304_situation"
+port = "3307"
+username = "1304_situation"
+password = "b08e3b880f62610823dfee4174e9e60a58ceb9ed"
+
+try:
+    # Establishing the connection to the database
+    connection = mysql.connector.connect(
+        host=hostname,
+        database=database,
+        user=username,
+        password=password,
+        port=port
+    )
+
+    if connection.is_connected():
+        # Fetching and printing the server info
+        db_info = connection.get_server_info()
+        print("Connected to MySQL Server version ", db_info)
+
+        # Creating a cursor object to interact with the database
+        cursor = connection.cursor()
+
+        # Executing a query to check the current database
+        cursor.execute("SELECT database();")
+        record = cursor.fetchone()
+        print("You're connected to database: ", record)
+
+except Error as e:
+    # Handling any errors during the connection
+    print("Error while connecting to MySQL", e)
+
+finally:
+    # Ensuring that the connection is properly closed
+    if connection.is_connected():
+        cursor.close()
+        connection.close()
+        print("MySQL connection is closed")
+
+
 # db = mysql.connector.connect(
-#     host="localhost",
-#     user="root",
-#     password="root",  # Replace with your actual password
-#     database="librarydb"
+#     host="sql12.freesqldatabase.com",
+#     user="sql12776203",
+#     password="vQ4JwNe3nn",
+#     database="sql12776203",
+#     port=3306
 # )
-
-
-
-db = mysql.connector.connect(
-    host="sql12.freesqldatabase.com",
-    user="sql12776203",
-    password="vQ4JwNe3nn",
-    database="sql12776203",
-    port=3306
-)
 
 
 
