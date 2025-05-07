@@ -20,8 +20,9 @@ def get_db_connection():
     try:
         return mysql.connector.connect(**DB_CONFIG)
     except Error as e:
-        print("Database connection failed:", e)
+        app.logger.error(f"Database connection failed: {e}")
         return None
+
 
 # Fetch all books
 def fetch_books():
