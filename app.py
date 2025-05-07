@@ -1,104 +1,32 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash
-import mysql.connector
+from flask import Flask, render_template, request, redirect, url_for, flash
 from datetime import datetime
-import os
-from urllib.parse import urlparse
 import mysql.connector
+from mysql.connector import Error
 
 app = Flask(__name__)
 app.secret_key = 'charliechaplin'
 
+# Database connection configuration
+DB_CONFIG = {
+    'host': "gowsj.h.filess.io",
+    'database': "1304_situation",
+    'port': 3307,
+    'user': "1304_situation",
+    'password': "b08e3b880f62610823dfee4174e9e60a58ceb9ed"
+}
 
-import mysql.connector
-from mysql.connector import Error
+def get_db_connection():
+    return mysql.connector.connect(**DB_CONFIG)
 
-# Database connection details
-hostname = "gowsj.h.filess.io"
-database = "1304_situation"
-port = "3307"
-username = "1304_situation"
-password = "b08e3b880f62610823dfee4174e9e60a58ceb9ed"
-
-try:
-    # Establishing the connection to the database
-    connection = mysql.connector.connect(
-        host=hostname,
-        database=database,
-        user=username,
-        password=password,
-        port=port
-    )
-
-    if connection.is_connected():
-        # Fetching and printing the server info
-        db_info = connection.get_server_info()
-        print("Connected to MySQL Server version ", db_info)
-
-        # Creating a cursor object to interact with the database
-        cursor = connection.cursor()
-
-        # Executing a query to check the current database
-        cursor.execute("SELECT database();")
-        record = cursor.fetchone()
-        print("You're connected to database: ", record)
-
-except Error as e:
-    # Handling any errors during the connection
-    print("Error while connecting to MySQL", e)
-
-finally:
-    # Ensuring that the connection is properly closed
-    if connection.is_connected():
-        cursor.close()
-        connection.close()
-        print("MySQL connection is closed")
-
-
-# db = mysql.connector.connect(
-#     host="sql12.freesqldatabase.com",
-#     user="sql12776203",
-#     password="vQ4JwNe3nn",
-#     database="sql12776203",
-#     port=3306
-# )
-
-
-
-# # Prometheus Metrics
-# REQUEST_COUNT = Counter('http_requests_total', 'Total number of HTTP requests', ['method', 'endpoint'])
-# REQUEST_LATENCY = Histogram('http_request_duration_seconds', 'Histogram of HTTP request durations', ['method', 'endpoint'])
-
-# # Register Prometheus metrics
-# REGISTRY.register(REQUEST_COUNT)
-# REGISTRY.register(REQUEST_LATENCY)
-
-# Middleware to track request count and latency
-@app.before_request
-def before_request():
-    request.start_time = datetime.now()
-
-# @app.after_request
-# def after_request(response):
-    # Track HTTP request count
-    # REQUEST_COUNT.labels(method=request.method, endpoint=request.endpoint).inc()
-    
-    # # Track HTTP request latency
-    # duration = (datetime.now() - request.start_time).total_seconds()
-    # REQUEST_LATENCY.labels(method=request.method, endpoint=request.endpoint).observe(duration)
-    
-    # return response
-
+# Example function to fetch books
 def fetch_books():
-    cursor = db.cursor(dictionary=True)
+    connection = get_db_connection()
+    cursor = connection.cursor(dictionary=True)
     cursor.execute("SELECT * FROM books")
     books = cursor.fetchall()
     cursor.close()
+    connection.close()
     return books
-
-# @app.route('/metrics')
-# def metrics():
-#     # Expose metrics to Prometheus
-#     return generate_latest(REGISTRY), 200, {'Content-Type': 'text/plain'}
 
 @app.route('/')
 def login():
@@ -106,164 +34,62 @@ def login():
 
 @app.route('/login', methods=['POST'])
 def login_post():
-    error = None
-    if request.method == 'POST':
-        name = request.form.get('name')
-        email = request.form.get('email')
+    name = request.form.get('name')
+    email = request.form.get('email')
 
-        cursor = db.cursor(dictionary=True)
-        cursor.execute("SELECT * FROM members WHERE Name = %s AND Email = %s", (name, email))
-        member = cursor.fetchone()
+    connection = get_db_connection()
+    cursor = connection.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM members WHERE Name = %s AND Email = %s", (name, email))
+    member = cursor.fetchone()
+    cursor.close()
+    connection.close()
 
-        if member:
-            return redirect(url_for('display_books', name=name, email=email))
-        else:
-            error = 'Invalid name or email'
-    return render_template('login.html', error=error)
+    if member:
+        return redirect(url_for('display_books', name=name, email=email))
+    else:
+        return render_template('login.html', error='Invalid name or email')
 
 @app.route('/display_books')
 def display_books():
     name = request.args.get('name')
     email = request.args.get('email')
 
-    cursor = db.cursor(dictionary=True)
+    connection = get_db_connection()
+    cursor = connection.cursor(dictionary=True)
     cursor.execute("SELECT Member_Id FROM members WHERE Name = %s AND Email = %s", (name, email))
     member = cursor.fetchone()
     cursor.close()
+    connection.close()
 
-    if member:
-        member_id = member['Member_Id']
-    else:
-        member_id = None
-
+    member_id = member['Member_Id'] if member else None
     books = fetch_books()
+
     return render_template('index.html', books=books, name=name, email=email, member_id=member_id)
 
 @app.route('/borrow', methods=['POST'])
 def borrow_book():
-    try:
-        book_id = request.form['book_id']
-        member_id = request.form['member_id']
+    book_id = request.form['book_id']
+    member_id = request.form['member_id']
 
-        cursor = db.cursor()
-        cursor.execute("SELECT Available_Copies FROM books WHERE Book_Id = %s", (book_id,))
-        available_copies = cursor.fetchone()[0]
+    connection = get_db_connection()
+    cursor = connection.cursor()
 
-        if available_copies > 0:
-            cursor.execute("SELECT COUNT(*) FROM borrowed_books WHERE Member_Id = %s", (member_id,))
-            borrowed_count = cursor.fetchone()[0]
+    # Check availability
+    cursor.execute("SELECT Available_Copies FROM books WHERE Book_Id = %s", (book_id,))
+    available = cursor.fetchone()
+    if available and available[0] > 0:
+        # Update copies and insert into borrow history
+        cursor.execute("UPDATE books SET Available_Copies = Available_Copies - 1 WHERE Book_Id = %s", (book_id,))
+        cursor.execute("INSERT INTO borrows (Book_Id, Member_Id, Borrow_Date) VALUES (%s, %s, %s)",
+                       (book_id, member_id, datetime.now()))
+        connection.commit()
+        flash('Book borrowed successfully!', 'success')
+    else:
+        flash('Book not available.', 'danger')
 
-            if borrowed_count >= 2:
-                return "You have already borrowed the maximum number of books (2).", 400
-
-            cursor.execute("INSERT INTO borrowed_books (Book_Id, Member_Id, Borrowed_Date) VALUES (%s, %s, %s)", (book_id, member_id, datetime.now()))
-            cursor.execute("UPDATE books SET Available_Copies = Available_Copies - 1 WHERE Book_Id = %s", (book_id,))
-            db.commit()
-            cursor.close()
-
-            return "Book borrowed successfully.", 200
-        else:
-            return "Sorry, the book is not available for borrowing.", 400
-    except Exception as e:
-        print("Error:", e)
-        return "Failed to borrow the book. Error: {}".format(e), 500
-
-@app.route('/logout')
-def logout():
-    session.clear()
-    return redirect(url_for('login'))
-
-def fetch_borrowed_books(member_id):
-    cursor = db.cursor(dictionary=True)
-    cursor.execute("""
-        SELECT books.Book_Id, books.Title, books.Author, borrowed_books.Borrowed_Date
-        FROM borrowed_books
-        JOIN books ON borrowed_books.Book_Id = books.Book_Id
-        WHERE borrowed_books.Member_Id = %s
-    """, (member_id,))
-    borrowed_books = cursor.fetchall()
     cursor.close()
-    return borrowed_books
+    connection.close()
+    return redirect(url_for('display_books', name=request.args.get('name'), email=request.args.get('email')))
 
-@app.route('/my_borrowed_books/<member_id>')
-def my_borrowed_books(member_id):
-    try:
-        borrowed_books = fetch_borrowed_books(member_id)
-        return render_template('my_borrowed_books.html', borrowed_books=borrowed_books, member_id=member_id)
-    except Exception as e:
-        print("Error:", e)
-        return "Failed to fetch borrowed books. Error: {}".format(e), 500
-
-@app.route('/return_books', methods=['POST'])
-def return_books():
-    try:
-        book_ids = request.form.getlist('book_ids[]')
-        member_id = request.form['member_id']
-
-        if not book_ids or not member_id:
-            return "Missing book IDs or member ID", 400
-
-        cursor = db.cursor()
-
-        for book_id in book_ids:
-            cursor.execute("DELETE FROM borrowed_books WHERE Book_Id = %s AND Member_Id = %s", (book_id, member_id))
-            affected_rows = cursor.rowcount
-            print(f"Deleted {affected_rows} row(s) from borrowed_books")
-
-            if affected_rows > 0:
-                cursor.execute("UPDATE books SET Available_Copies = Available_Copies + 1 WHERE Book_Id = %s", (book_id,))
-                updated_rows = cursor.rowcount
-                print(f"Updated {updated_rows} row(s) in books")
-
-        db.commit()
-        cursor.close()
-
-        flash('Books returned successfully', 'success')
-        return redirect(url_for('my_borrowed_books', member_id=member_id))
-    except Exception as e:
-        print("Error:", e)
-        flash('Failed to return books. Please try again later.', 'error')
-        return "Failed to return books. Error: {}".format(e), 500
-
-@app.route('/register', methods=['GET', 'POST'])
-def register():
-    error = None
-    if request.method == 'POST':
-        name = request.form.get('name')
-        email = request.form.get('email')
-        join_date = datetime.now()
-
-        cursor = db.cursor()
-        cursor.execute("INSERT INTO members (Name, Email, Join_Date) VALUES (%s, %s, %s)", (name, email, join_date))
-        db.commit()
-        cursor.close()
-
-        return redirect(url_for('login'))
-    return render_template('register.html', error=error)
-
-@app.route('/add_book')
-def add_book_form():
-    return render_template('add_book.html')
-
-@app.route('/add_book', methods=['POST'])
-def add_book():
-    try:
-        book_id = request.form['book_id']
-        title = request.form['title']
-        author = request.form['author']
-        published_year = request.form['published_year']
-        genre = request.form['genre']
-        available_copies = request.form['available_copies']
-        
-        cursor = db.cursor()
-        cursor.execute("INSERT INTO books (Book_Id, Title, Author, Published_Year, Genre, Available_Copies) VALUES (%s, %s, %s, %s, %s, %s)", (book_id, title, author, published_year, genre, available_copies))
-        db.commit()
-        cursor.close()
-
-        return redirect(url_for('add_book_form'))
-    except Exception as e:
-        print("Error:", e)
-        return "Failed to add the book. Error: {}".format(e), 500
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     app.run(debug=True)
