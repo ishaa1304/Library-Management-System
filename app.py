@@ -25,122 +25,205 @@ def get_db_connection():
 
 # Fetch all books
 def fetch_books():
-    connection = get_db_connection()
-    if not connection:
-        return []
-
-    cursor = connection.cursor(dictionary=True)
+    cursor = db.cursor(dictionary=True)
     cursor.execute("SELECT * FROM books")
     books = cursor.fetchall()
     cursor.close()
-    connection.close()
     return books
 
 @app.route('/')
 def login():
     return render_template('login.html')
 
-@app.route('/register')
-def register():
-    return render_template('register.html')
-
-
 @app.route('/login', methods=['POST'])
 def login_post():
-    name = request.form.get('name')
-    email = request.form.get('email')
+    error = None
+    if request.method == 'POST':
+        name = request.form.get('name')
+        email = request.form.get('email')
 
-    connection = get_db_connection()
-    if not connection:
-        return render_template('login.html', error='Database connection failed.')
+        cursor = db.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM members WHERE Name = %s AND Email = %s", (name, email))
+        member = cursor.fetchone()
 
-    cursor = connection.cursor(dictionary=True)
-    cursor.execute("SELECT * FROM members WHERE Name = %s AND Email = %s", (name, email))
-    member = cursor.fetchone()
-    cursor.close()
-    connection.close()
+        if member:
+            # Redirect to the page displaying all the books
+            return redirect(url_for('display_books', name=name, email=email))
+        else:
+            # Render the login page again with an error message
+            error = 'Invalid name or email'
+    return render_template('login.html', error=error)
 
-    if member:
-        return redirect(url_for('display_books', name=name, email=email))
-    else:
-        return render_template('login.html', error='Invalid name or email')
-
-# @app.route('/display_books')
-# def display_books():
-#     name = request.args.get('name')
-#     email = request.args.get('email')
-
-#     connection = get_db_connection()
-#     if not connection:
-#         flash("Database connection failed.", "danger")
-#         return render_template('index.html', books=[], name=name, email=email, member_id=None)
-
-#     cursor = connection.cursor(dictionary=True)
-#     cursor.execute("SELECT Member_Id FROM members WHERE Name = %s AND Email = %s", (name, email))
-#     member = cursor.fetchone()
-#     cursor.close()
-#     connection.close()
-
-#     member_id = member['Member_Id'] if member else None
-#     books = fetch_books()
-
-#     return render_template('index.html', books=books, name=name, email=email, member_id=member_id)
 
 @app.route('/display_books')
 def display_books():
     name = request.args.get('name')
     email = request.args.get('email')
 
-    if not name or not email:
-        flash("Missing user details. Please log in again.", "danger")
-        return redirect(url_for('login'))
-
-    connection = get_db_connection()
-    cursor = connection.cursor(dictionary=True)
+    cursor = db.cursor(dictionary=True)
     cursor.execute("SELECT Member_Id FROM members WHERE Name = %s AND Email = %s", (name, email))
     member = cursor.fetchone()
     cursor.close()
-    connection.close()
 
-    if not member:
-        flash("Member not found.", "danger")
-        return redirect(url_for('login'))
+    if member:
+        member_id = member['Member_Id']
+    else:
+        member_id = None
 
-    member_id = member['Member_Id']
     books = fetch_books()
-
     return render_template('index.html', books=books, name=name, email=email, member_id=member_id)
+
+
+
 
 
 @app.route('/borrow', methods=['POST'])
 def borrow_book():
-    book_id = request.form['book_id']
-    member_id = request.form['member_id']
-    name = request.form['name']
-    email = request.form['email']
+    try:
+        # Retrieve data from the request
+        book_id = request.form['book_id']
+        member_id = request.form['member_id']
 
-    connection = get_db_connection()
-    if not connection:
-        flash("Database connection failed.", "danger")
-        return redirect(url_for('display_books', name=name, email=email))
+        # Check if the book is available
+        cursor = db.cursor()
+        cursor.execute("SELECT Available_Copies FROM books WHERE Book_Id = %s", (book_id,))
+        available_copies = cursor.fetchone()[0]
 
-    cursor = connection.cursor()
+        if available_copies > 0:
+            # Check if the user has already borrowed the maximum number of books
+            cursor.execute("SELECT COUNT(*) FROM borrowed_books WHERE Member_Id = %s", (member_id,))
+            borrowed_count = cursor.fetchone()[0]
 
-    cursor.execute("SELECT Available_Copies FROM books WHERE Book_Id = %s", (book_id,))
-    available = cursor.fetchone()
+            if borrowed_count >= 2:
+                # User has already borrowed 2 books, cannot borrow more
+                return "You have already borrowed the maximum number of books (2).", 400
 
-    if available and available[0] > 0:
-        cursor.execute("UPDATE books SET Available_Copies = Available_Copies - 1 WHERE Book_Id = %s", (book_id,))
-        cursor.execute("INSERT INTO borrows (Book_Id, Member_Id, Borrow_Date) VALUES (%s, %s, %s)",
-                       (book_id, member_id, datetime.now()))
-        connection.commit()
-        flash('Book borrowed successfully!', 'success')
-    else:
-        flash('Book not available.', 'danger')
+            # User can borrow the book
+            cursor.execute("INSERT INTO borrowed_books (Book_Id, Member_Id, Borrowed_Date) VALUES (%s, %s, %s)", (book_id, member_id, datetime.now()))
+            cursor.execute("UPDATE books SET Available_Copies = Available_Copies - 1 WHERE Book_Id = %s", (book_id,))
+            db.commit()
+            cursor.close()
 
+            # Return a success response
+            return "Book borrowed successfully.", 200
+        else:
+            # Book is not available
+            return "Sorry, the book is not available for borrowing.", 400
+    except Exception as e:
+        # Log the error and return an error message
+        print("Error:", e)
+        return "Failed to borrow the book. Error: {}".format(e), 500
+
+
+
+@app.route('/logout')
+def logout():
+    # Clear the session data
+    session.clear()
+    return redirect(url_for('login'))
+
+
+def fetch_borrowed_books(member_id):
+    cursor = db.cursor(dictionary=True)
+    cursor.execute("""
+        SELECT books.Book_Id, books.Title, books.Author, borrowed_books.Borrowed_Date
+        FROM borrowed_books
+        JOIN books ON borrowed_books.Book_Id = books.Book_Id
+        WHERE borrowed_books.Member_Id = %s
+    """, (member_id,))
+    borrowed_books = cursor.fetchall()
     cursor.close()
-    connection.close()
-    return redirect(url_for('display_books', name=name, email=email))
+    return borrowed_books
 
-if __name__ == '__main__':
+@app.route('/my_borrowed_books/<member_id>')
+def my_borrowed_books(member_id):
+    try:
+        borrowed_books = fetch_borrowed_books(member_id)
+        return render_template('my_borrowed_books.html', borrowed_books=borrowed_books, member_id=member_id)
+    except Exception as e:
+        print("Error:", e)
+        return "Failed to fetch borrowed books. Error: {}".format(e), 500
+
+@app.route('/return_books', methods=['POST'])
+def return_books():
+    try:
+        book_ids = request.form.getlist('book_ids[]')
+        member_id = request.form['member_id']
+
+        if not book_ids or not member_id:
+            return "Missing book IDs or member ID", 400
+
+        cursor = db.cursor()
+
+        for book_id in book_ids:
+            cursor.execute("DELETE FROM borrowed_books WHERE Book_Id = %s AND Member_Id = %s", (book_id, member_id))
+            affected_rows = cursor.rowcount
+            print(f"Deleted {affected_rows} row(s) from borrowed_books")
+
+            if affected_rows > 0:
+                cursor.execute("UPDATE books SET Available_Copies = Available_Copies + 1 WHERE Book_Id = %s", (book_id,))
+                updated_rows = cursor.rowcount
+                print(f"Updated {updated_rows} row(s) in books")
+
+        db.commit()
+        cursor.close()
+
+        flash('Books returned successfully', 'success')
+        return redirect(url_for('my_borrowed_books', member_id=member_id))
+    except Exception as e:
+        print("Error:", e)
+        flash('Failed to return books. Please try again later.', 'error')
+        return "Failed to return books. Error: {}".format(e), 500
+
+
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    error = None
+    if request.method == 'POST':
+        name = request.form.get('name')
+        email = request.form.get('email')
+        join_date = datetime.now()
+
+        cursor = db.cursor()
+        cursor.execute("INSERT INTO members (Name, Email, Join_Date) VALUES (%s, %s, %s)", (name, email, join_date))
+        db.commit()
+        cursor.close()
+
+        
+
+        # Redirect to login page after successful registration
+        return redirect(url_for('login'))
+    return render_template('register.html', error=error)
+
+@app.route('/add_book')
+def add_book_form():
+    return render_template('add_book.html')
+
+@app.route('/add_book', methods=['POST'])
+def add_book():
+    try:
+        # Retrieve form data
+        book_id = request.form['book_id']
+        title = request.form['title']
+        author = request.form['author']
+        published_year = request.form['published_year']
+        genre = request.form['genre']
+        available_copies = request.form['available_copies']
+        
+        # Insert new book details into the database
+        cursor = db.cursor()
+        cursor.execute("INSERT INTO books (Book_Id, Title, Author, Published_Year, Genre, Available_Copies) VALUES (%s, %s, %s, %s, %s, %s)", (book_id, title, author, published_year, genre, available_copies))
+        db.commit()
+        cursor.close()
+
+        # Redirect to a success page or back to the form page
+        return redirect(url_for('add_book_form'))  # Redirect back to the add book form after adding a book
+    except Exception as e:
+        # Log the error and return an error message
+        print("Error:", e)
+        return "Failed to add the book. Error: {}".format(e), 500
+
+if __name__ == "__main__":
     app.run(debug=True)
+    
