@@ -188,6 +188,7 @@ def return_books():
         return "Failed to return books. Error: {}".format(e), 500
 
 @app.route('/register', methods=['GET', 'POST'])
+@app.route('/register', methods=['GET', 'POST'])
 def register():
     error = None
     if request.method == 'POST':
@@ -195,19 +196,30 @@ def register():
         email = request.form.get('email')
         join_date = datetime.now()
 
-        db = get_db_connection()
-        if db:
-            cursor = db.cursor()
-            cursor.execute("INSERT INTO members (Name, Email, Join_Date) VALUES (%s, %s, %s)", (name, email, join_date))
-            db.commit()
-            cursor.close()
-            db.close()
+        # Validate form data
+        if not name or not email:
+            error = 'Name and email are required.'
+            return render_template('register.html', error=error)
 
-            return redirect(url_for('login'))
+        db = get_db_connection()  # Ensure database connection is retrieved
+        if db:
+            try:
+                cursor = db.cursor()
+                cursor.execute("INSERT INTO members (Name, Email, Join_Date) VALUES (%s, %s, %s)", (name, email, join_date))
+                db.commit()
+                cursor.close()
+                db.close()
+
+                return redirect(url_for('login'))
+            except Exception as e:
+                app.logger.error(f"Failed to register user: {e}")
+                app.logger.error(traceback.format_exc())
+                error = f"Failed to register user. Error: {e}"
         else:
             error = 'Database connection failed'
 
     return render_template('register.html', error=error)
+
 
 @app.route('/add_book')
 def add_book_form():
