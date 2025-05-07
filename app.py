@@ -6,7 +6,7 @@ from mysql.connector import Error
 app = Flask(__name__)
 app.secret_key = 'charliechaplin'
 
-# Database connection configuration
+# Database configuration
 DB_CONFIG = {
     'host': "gowsj.h.filess.io",
     'database': "1304_situation",
@@ -15,12 +15,20 @@ DB_CONFIG = {
     'password': "b08e3b880f62610823dfee4174e9e60a58ceb9ed"
 }
 
+# Create a DB connection
 def get_db_connection():
-    return mysql.connector.connect(**DB_CONFIG)
+    try:
+        return mysql.connector.connect(**DB_CONFIG)
+    except Error as e:
+        print("Database connection failed:", e)
+        return None
 
-# Example function to fetch books
+# Fetch all books
 def fetch_books():
     connection = get_db_connection()
+    if not connection:
+        return []
+
     cursor = connection.cursor(dictionary=True)
     cursor.execute("SELECT * FROM books")
     books = cursor.fetchall()
@@ -32,12 +40,20 @@ def fetch_books():
 def login():
     return render_template('login.html')
 
+@app.route('/register')
+def register():
+    return render_template('register.html')
+
+
 @app.route('/login', methods=['POST'])
 def login_post():
     name = request.form.get('name')
     email = request.form.get('email')
 
     connection = get_db_connection()
+    if not connection:
+        return render_template('login.html', error='Database connection failed.')
+
     cursor = connection.cursor(dictionary=True)
     cursor.execute("SELECT * FROM members WHERE Name = %s AND Email = %s", (name, email))
     member = cursor.fetchone()
@@ -55,6 +71,10 @@ def display_books():
     email = request.args.get('email')
 
     connection = get_db_connection()
+    if not connection:
+        flash("Database connection failed.", "danger")
+        return render_template('index.html', books=[], name=name, email=email, member_id=None)
+
     cursor = connection.cursor(dictionary=True)
     cursor.execute("SELECT Member_Id FROM members WHERE Name = %s AND Email = %s", (name, email))
     member = cursor.fetchone()
@@ -70,15 +90,20 @@ def display_books():
 def borrow_book():
     book_id = request.form['book_id']
     member_id = request.form['member_id']
+    name = request.form['name']
+    email = request.form['email']
 
     connection = get_db_connection()
+    if not connection:
+        flash("Database connection failed.", "danger")
+        return redirect(url_for('display_books', name=name, email=email))
+
     cursor = connection.cursor()
 
-    # Check availability
     cursor.execute("SELECT Available_Copies FROM books WHERE Book_Id = %s", (book_id,))
     available = cursor.fetchone()
+
     if available and available[0] > 0:
-        # Update copies and insert into borrow history
         cursor.execute("UPDATE books SET Available_Copies = Available_Copies - 1 WHERE Book_Id = %s", (book_id,))
         cursor.execute("INSERT INTO borrows (Book_Id, Member_Id, Borrow_Date) VALUES (%s, %s, %s)",
                        (book_id, member_id, datetime.now()))
@@ -89,7 +114,7 @@ def borrow_book():
 
     cursor.close()
     connection.close()
-    return redirect(url_for('display_books', name=request.args.get('name'), email=request.args.get('email')))
+    return redirect(url_for('display_books', name=name, email=email))
 
 if __name__ == '__main__':
     app.run(debug=True)
