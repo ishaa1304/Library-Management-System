@@ -65,26 +65,52 @@ def login_post():
     else:
         return render_template('login.html', error='Invalid name or email')
 
+# @app.route('/display_books')
+# def display_books():
+#     name = request.args.get('name')
+#     email = request.args.get('email')
+
+#     connection = get_db_connection()
+#     if not connection:
+#         flash("Database connection failed.", "danger")
+#         return render_template('index.html', books=[], name=name, email=email, member_id=None)
+
+#     cursor = connection.cursor(dictionary=True)
+#     cursor.execute("SELECT Member_Id FROM members WHERE Name = %s AND Email = %s", (name, email))
+#     member = cursor.fetchone()
+#     cursor.close()
+#     connection.close()
+
+#     member_id = member['Member_Id'] if member else None
+#     books = fetch_books()
+
+#     return render_template('index.html', books=books, name=name, email=email, member_id=member_id)
+
 @app.route('/display_books')
 def display_books():
     name = request.args.get('name')
     email = request.args.get('email')
 
-    connection = get_db_connection()
-    if not connection:
-        flash("Database connection failed.", "danger")
-        return render_template('index.html', books=[], name=name, email=email, member_id=None)
+    if not name or not email:
+        flash("Missing user details. Please log in again.", "danger")
+        return redirect(url_for('login'))
 
+    connection = get_db_connection()
     cursor = connection.cursor(dictionary=True)
     cursor.execute("SELECT Member_Id FROM members WHERE Name = %s AND Email = %s", (name, email))
     member = cursor.fetchone()
     cursor.close()
     connection.close()
 
-    member_id = member['Member_Id'] if member else None
+    if not member:
+        flash("Member not found.", "danger")
+        return redirect(url_for('login'))
+
+    member_id = member['Member_Id']
     books = fetch_books()
 
     return render_template('index.html', books=books, name=name, email=email, member_id=member_id)
+
 
 @app.route('/borrow', methods=['POST'])
 def borrow_book():
